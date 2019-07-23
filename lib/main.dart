@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
         // or simply save your changes to "hot reload" in a Flutter IDE).
         // Notice that the counter didn't reset back to zero; the application
         // is not restarted.
-        primarySwatch: Colors.orange,
+        primarySwatch: Colors.blue,
       ),
       home: MyHomePage(title: 'Terraforming Mars player mat'),
     );
@@ -57,88 +57,55 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  Widget _buildTrackerRow(color, subColor, title) => Container(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        Container(
-          constraints: BoxConstraints(
-            minHeight: 30
-          ),
-          decoration: BoxDecoration(
-            color: color,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Text(title),
-            ],
-          ),
-        ),
-        Container(
-          constraints: BoxConstraints(
-              minHeight: 60
-          ),
-          decoration: BoxDecoration(
-            color: subColor,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              Text('tracker1'),
-              Text('Tracker2'),
-            ],
-          ),
-        )
-      ],
-    )
-  );
-
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
+
       ),
 
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            _buildTrackerRow(Colors.yellow[300], Colors.yellow[50], 'Megacredits'),
-            _buildTrackerRow(Colors.brown[300], Colors.brown[50], 'Steel'),
-            _buildTrackerRow(Colors.grey[300], Colors.grey[50], 'Titanium'),
-            _buildTrackerRow(Colors.green[300], Colors.green[50], 'Plants'),
-            _buildTrackerRow(Colors.purple[300], Colors.purple[50], 'Energy'),
-            _buildTrackerRow(Colors.red[300], Colors.red[50], 'Heat'),
-          ]
-//        children: <Widget>[
-//            Text(
-//              'Text1:',
-//            ),
-//            Text(
-//              'Text2:',
-//            ),
-//            Text(
-//              'Text3:',
-//            ),
-//            Text(
-//              'Text4:',
-//            ),
-//            Text(
-//              'Text5:',
-//            ),
-//            Text(
-//              '$_counter',
-//              style: Theme.of(context).textTheme.display1,
-//            ),
-//          ],
+        child: Container(
+          child: Column(
+            children: [
+//              Padding(
+//                padding: EdgeInsets.all(8.0),
+//              ),
+              Expanded(
+                  child: new mainRow()
+              ),
+              Expanded(
+                  child: new trackerRow(color: Colors.yellow[700], subColor: Colors.yellow[50], title: 'Megacredits')
+              ),
+              Expanded(
+                  child: new trackerRow(color: Colors.brown[700], subColor: Colors.brown[50], title: 'Steel')
+              ),
+              Expanded(
+                  child: new trackerRow(color: Colors.grey[700], subColor: Colors.grey[100], title: 'Titanium')
+              ),
+              Expanded(
+                  child:new trackerRow(color: Colors.green[700], subColor: Colors.green[50], title: 'Plants')
+              ),
+              Expanded(
+                  child:new trackerRow(color: Colors.deepPurple[700], subColor: Colors.deepPurple[50], title: 'Energy')
+              ),
+//              Expanded(
+//                  child:new trackerRow(color: Colors.red[700], subColor: Colors.red[50], title: 'Heat')
+//              ),
+              Expanded(
+                child: new Card(
+                  shape: const RoundedRectangleBorder(
+                    side: BorderSide(
+                        color: Colors.yellow
+                    ),
+                    borderRadius: BorderRadius.all(Radius.circular(15.0)),
+                  ),
+                  child: new Text("Text in a card")
+                ),
+              )
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -148,4 +115,172 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     );
   }
+}
+
+class trackerRow extends StatelessWidget {
+  const trackerRow({
+    Key key,
+    @required this.color,
+    @required this.subColor,
+    @required this.title,
+  }) : super(key: key);
+
+  final color;
+  final subColor;
+  final title;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    constraints: BoxConstraints(
+
+    ),
+    child: Column(
+      children: [
+        Container(
+          constraints: BoxConstraints(
+            minHeight: 30,
+          ),
+          decoration: BoxDecoration(
+            color: color,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(child:Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Column(
+                    children: [
+                      Row(
+                        children: [
+                          Column(
+                            children: [
+                              IconButton(
+                                  icon: Icon(Icons.add),
+                                  onPressed: () {}
+                              ),
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              Text(
+                                '6',
+                                style: TextStyle(
+                                  fontSize: 32,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              IconButton(
+                                  icon: Icon(Icons.remove),
+                                  onPressed: () {}
+                              ),
+                            ],
+                          ),
+                        ]
+                      ),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      Icon(Icons.arrow_forward),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      Text(
+                        '12',
+                        style: TextStyle(
+                          fontSize: 40,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        )),
+      ],
+    )
+  );
+}
+
+class mainRow extends StatelessWidget {
+  const mainRow({
+    Key key,
+  }) : super(key: key);
+
+
+  @override
+  Widget build(BuildContext context) => Container(
+      constraints: BoxConstraints(
+
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Container(
+            constraints: BoxConstraints(
+              minHeight: 30,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.grey,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Terraforming Rating',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(child:Container(
+
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Text('tracker1'),
+                    Text('Tracker2'),
+                  ],
+                ),
+              ],
+            ),
+          )),
+        ],
+      )
+  );
 }
