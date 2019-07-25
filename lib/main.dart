@@ -3,11 +3,20 @@ import 'package:numberpicker/numberpicker.dart';
 
 void main() => runApp(MyApp());
 
-const double borderCircularRadius = 0;
-const int mainColorTeint = 800;
-const int subColorTeint = 50;
-const double subColorOpacity = 0.2;
+const double BORDER_CIRCULAR_RADIUS = 0;
+const int MAIN_COLOR_TEINT = 800;
+const int SUB_COLOR_TEINT = 50;
+const double SUB_COLOR_OPACITY = 0.3;
+const double BORDER_WITH = 2;
+const double RESOURCE_FONT_SIZE= 42;
 
+const RESOURCE_TERRAFORMING_RATING = 'Terraforming Rating';
+const RESOURCE_MEGACREDITS = 'Megacredits';
+const RESOURCE_STEEL = 'Steel';
+const RESOURCE_TITANIUM = 'Titanium';
+const RESOURCE_PLANTS = 'Plants';
+const RESOURCE_ENERGY = 'Energy';
+const RESOURCE_HEAT = 'Heat';
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
@@ -33,29 +42,99 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  Map<String, int> _productions = new Map();
+  Map<String, int> _amounts = new Map();
+  int _generation = 1;
 
-  void _incrementCounter() {
+  @override
+  void initState() {
+    super.initState();
+    _reset();
+  }
+
+  void _incrementGeneration() {
     setState(() {
-      _counter++;
+      _productions.keys.forEach((String key) => {
+        _amounts[key] = _getAmount(key) + _productions[key]
+      });
+      _amounts[RESOURCE_MEGACREDITS] = _amounts[RESOURCE_MEGACREDITS] + _getProductions(RESOURCE_TERRAFORMING_RATING);
+      _generation++;
     });
   }
 
-  void _showDialog(String text, Color color) {
+  void _setResourceAmount(String type, int amount) {
+    setState(() {
+      if (amount != null) {
+        _amounts[type] = amount;
+      }
+    });
+  }
+
+  int _getAmount(String type) {
+    return _amounts[type] != null ? _amounts[type] : 0;
+  }
+
+  void _incrementProductions(String type) {
+    setState(() {
+      int currentValue = _productions[type];
+      if (currentValue == null) {
+        currentValue = 0;
+      }
+      _productions[type] = currentValue + 1;
+    });
+  }
+
+  void _decrementProductions(String type) {
+    setState(() {
+      int currentValue = _productions[type];
+      if (currentValue == null) {
+        currentValue = 0;
+      }
+      _productions[type] = currentValue - 1;
+    });
+  }
+
+  int _getProductions(String type) {
+    return _productions[type] != null ? _productions[type] : 0;
+  }
+
+  void _reset() {
+    setState(() {
+      _productions[RESOURCE_TERRAFORMING_RATING] = 14;
+      _productions[RESOURCE_MEGACREDITS] = 0;
+      _productions[RESOURCE_STEEL] = 0;
+      _productions[RESOURCE_TITANIUM] = 0;
+      _productions[RESOURCE_PLANTS] = 0;
+      _productions[RESOURCE_ENERGY] = 0;
+      _productions[RESOURCE_HEAT] = 0;
+
+      _amounts[RESOURCE_TERRAFORMING_RATING] = 14;
+      _amounts[RESOURCE_MEGACREDITS] = 0;
+      _amounts[RESOURCE_STEEL] = 0;
+      _amounts[RESOURCE_TITANIUM] = 0;
+      _amounts[RESOURCE_PLANTS] = 0;
+      _amounts[RESOURCE_ENERGY] = 0;
+      _amounts[RESOURCE_HEAT] = 0;
+      
+      _generation = 1;
+    });
+  }
+
+  void _showDialog(String name, Color color) {
     showDialog<int>(
         context: context,
         builder: (BuildContext context) {
           return new NumberPickerDialog.integer(
-            minValue: 1,
-            maxValue: 100,
-            initialIntegerValue: 5,
+            minValue: 0,
+            maxValue: 1000,
+            initialIntegerValue: _amounts[name] != null ? _amounts[name] : 0,
             title: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  text,
+                  name,
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 32,
                     color: color,
                     fontWeight: FontWeight.w700,
                   ),
@@ -64,7 +143,9 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           );
         }
-    );
+    ).then((int value) => {
+      _setResourceAmount(name, value)
+    });
   }
 
   @override
@@ -89,42 +170,43 @@ class _MyHomePageState extends State<MyHomePage> {
                 padding: EdgeInsets.all(12.0),
               ),
               Padding(
-                padding: EdgeInsets.all(8.0),
+                padding: EdgeInsets.all(0),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: <Widget>[
-                    Text('New game'),
+                    actionButton(text: 'Undo'),
+                    actionButton(text: 'New game'),
                   ],
                 ),
               ),
               Expanded(
-                  child: buildMainRow(color: Colors.blueGrey[mainColorTeint], subcolor: Colors.blueGrey[subColorTeint]),
+                  child: mainPanel(color: Colors.blueGrey[MAIN_COLOR_TEINT], subcolor: Colors.blueGrey[SUB_COLOR_TEINT]),
               ),
               Expanded(
-                  child: buildTrackerRow(color: Colors.yellow[mainColorTeint], subColor: Colors.yellow[subColorTeint], title: 'Megacredits')
+                  child: trackerPanel(color: Colors.yellow[MAIN_COLOR_TEINT], subColor: Colors.yellow[SUB_COLOR_TEINT], resource: RESOURCE_MEGACREDITS)
               ),
               Expanded(
-                  child: buildTrackerRow(color: Colors.brown[mainColorTeint], subColor: Colors.brown[subColorTeint], title: 'Steel')
+                  child: trackerPanel(color: Colors.brown[MAIN_COLOR_TEINT], subColor: Colors.brown[SUB_COLOR_TEINT], resource: RESOURCE_STEEL)
               ),
               Expanded(
-                  child: buildTrackerRow(color: Colors.grey[mainColorTeint], subColor: Colors.grey[subColorTeint], title: 'Titanium')
+                  child: trackerPanel(color: Colors.grey[MAIN_COLOR_TEINT], subColor: Colors.grey[SUB_COLOR_TEINT], resource: RESOURCE_TITANIUM)
               ),
               Expanded(
-                  child: buildTrackerRow(color: Colors.green[mainColorTeint], subColor: Colors.green[subColorTeint], title: 'Plants')
+                  child: trackerPanel(color: Colors.green[MAIN_COLOR_TEINT], subColor: Colors.green[SUB_COLOR_TEINT], resource: RESOURCE_PLANTS)
               ),
               Expanded(
-                  child: buildTrackerRow(color: Colors.deepPurple[mainColorTeint], subColor: Colors.deepPurple[subColorTeint], title: 'Energy')
+                  child: trackerPanel(color: Colors.deepPurple[MAIN_COLOR_TEINT], subColor: Colors.deepPurple[SUB_COLOR_TEINT], resource: RESOURCE_ENERGY)
               ),
               Expanded(
-                  child: buildTrackerRow(color: Colors.red[mainColorTeint], subColor: Colors.red[subColorTeint], title: 'Heat')
+                  child: trackerPanel(color: Colors.red[MAIN_COLOR_TEINT], subColor: Colors.red[SUB_COLOR_TEINT], resource: RESOURCE_HEAT)
               ),
               Padding(
                 padding: EdgeInsets.all(8.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: <Widget>[
-                    Text('Projects'),
-                    Text('Buy card'),
+                    actionButton(text: 'Projects'),
+                    actionButton(text: 'Buy card'),
                   ],
                 ),
               ),
@@ -135,44 +217,112 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Widget buildTrackerRow({Color color, Color subColor, String title}) => Container(
-      child: Column(
-        children: [
-          Container(
-            constraints: BoxConstraints(
-              minHeight: 20,
+  Widget actionButton({String text}) => FlatButton(
+    onPressed: _reset,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(
+          Radius.circular(20.0)
+      ),
+    ),
+    child: Text(
+      text,
+    ),
+  );
+
+  Widget rowHeader({String title, Color color}) => Container(
+    constraints: BoxConstraints(
+      minHeight: 24,
+    ),
+    decoration: BoxDecoration(
+      color: color,
+      borderRadius: new BorderRadius.only(
+          topLeft:  const  Radius.circular(BORDER_CIRCULAR_RADIUS),
+          topRight: const  Radius.circular(BORDER_CIRCULAR_RADIUS)
+      ),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.white,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget productionRow({Color color, String resource}) {
+    return Row(
+      children: [
+        Column(
+          children: [
+            IconButton(
+                icon: Icon(Icons.remove,
+                  color: color,
+                ),
+                onPressed:  () => {_decrementProductions(resource)}
             ),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: new BorderRadius.only(
-                  topLeft:  const  Radius.circular(borderCircularRadius),
-                  topRight: const  Radius.circular(borderCircularRadius)
+          ],
+        ),
+        Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.only(
+                left: 10,
+                right: 10,
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
+              child: Container(
+
+                constraints: BoxConstraints(
+                  minWidth: 44,
+                ),
+                child: Text(
+                  '${_productions[resource] != null ? _productions[resource] : 0}',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w400,
+                    fontSize: 32,
+                    color: color, //Colors.black,
                   ),
                 ),
-              ],
+              ),
             ),
+          ],
+        ),
+        Column(
+          children: [
+            IconButton(
+                icon: Icon(Icons.add,
+                  color: color,
+                ),
+                onPressed: () => {_incrementProductions(resource)}
+            ),
+          ],
+        ),
+      ]
+  );
+  }
+
+  Widget trackerPanel({Color color, Color subColor, String resource}) => Container(
+      child: Column(
+        children: [
+          rowHeader(
+            color: color,
+            title: resource,
           ),
           Expanded(child:Container(
             decoration: BoxDecoration(
-              color: subColor.withOpacity(subColorOpacity),
+              color: subColor.withOpacity(SUB_COLOR_OPACITY),
               borderRadius: new BorderRadius.only(
-                  bottomLeft:  const  Radius.circular(borderCircularRadius),
-                  bottomRight: const  Radius.circular(borderCircularRadius)
+                  bottomLeft:  const  Radius.circular(BORDER_CIRCULAR_RADIUS),
+                  bottomRight: const  Radius.circular(BORDER_CIRCULAR_RADIUS)
               ),
               border: Border.all(
                 color: color,
-                width: 3,
+                width: BORDER_WITH,
               ),
             ),
             child: Column(
@@ -183,53 +333,13 @@ class _MyHomePageState extends State<MyHomePage> {
                   children: [
                     Column(
                       children: [
-                        Row(
-                            children: [
-                              Column(
-                                children: [
-                                  IconButton(
-                                      icon: Icon(Icons.remove,
-                                        color: color,
-                                      ),
-                                      onPressed: () {}
-                                  ),
-                                ],
-                              ),
-                              Column(
-                                children: [
-                                  Padding(
-                                    padding: EdgeInsets.only(
-                                      left: 10,
-                                      right: 10,
-                                    ),
-                                    child: Text(
-                                      '6',
-                                      style: TextStyle(
-                                        fontSize: 32,
-                                        color: color, //Colors.black,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Column(
-                                children: [
-                                  IconButton(
-                                      icon: Icon(Icons.add,
-                                        color: color,
-                                      ),
-                                      onPressed: () {}
-                                  ),
-                                ],
-                              ),
-                            ]
-                        ),
+                        productionRow(color: color, resource: resource),
                       ],
                     ),
                     Column(
                       children: [
                         Icon(Icons.play_arrow,
-                          color: color.withOpacity(0.3),
+                          color: color.withOpacity(0.2),
                           size: 32,
                         ),
                       ],
@@ -237,11 +347,16 @@ class _MyHomePageState extends State<MyHomePage> {
                     Column(
                       children: [
                         FlatButton(
-                          onPressed: () => _showDialog(title, color),
+                          onPressed: () => _showDialog(resource, color),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.all(
+                                  Radius.circular(20.0)
+                              ),
+                          ),
                           child: Text(
-                            '12',
+                            '${_amounts[resource] != null ? _amounts[resource] : 0}',
                             style: TextStyle(
-                              fontSize: 48,
+                              fontSize: RESOURCE_FONT_SIZE,
                               color: color,
                               fontWeight: FontWeight.w600,
                             ),
@@ -258,18 +373,18 @@ class _MyHomePageState extends State<MyHomePage> {
       )
   );
 
-  Widget buildMainRow({Color color, Color subcolor}) => Container(
+  Widget mainPanel({Color color, Color subcolor}) => Container(
       child: Column(
         children: [
           Container(
             constraints: BoxConstraints(
-              minHeight: 20,
+              minHeight: 24,
             ),
             decoration: BoxDecoration(
               color: color,
               borderRadius: new BorderRadius.only(
-                  topLeft:  const  Radius.circular(borderCircularRadius),
-                  topRight: const  Radius.circular(borderCircularRadius)
+                  topLeft:  const  Radius.circular(BORDER_CIRCULAR_RADIUS),
+                  topRight: const  Radius.circular(BORDER_CIRCULAR_RADIUS)
               ),
             ),
             child: Row(
@@ -297,14 +412,14 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           Expanded(child:Container(
             decoration: BoxDecoration(
-              color: subcolor.withOpacity(subColorOpacity),
+              color: subcolor.withOpacity(SUB_COLOR_OPACITY),
               borderRadius: new BorderRadius.only(
-                  bottomLeft:  const  Radius.circular(borderCircularRadius),
-                  bottomRight: const  Radius.circular(borderCircularRadius)
+                  bottomLeft:  const  Radius.circular(BORDER_CIRCULAR_RADIUS),
+                  bottomRight: const  Radius.circular(BORDER_CIRCULAR_RADIUS)
               ),
               border: Border.all(
                 color: color,
-                width: 3,
+                width: BORDER_WITH,
               ),
             ),
             child: Column(
@@ -315,47 +430,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   children: [
                     Column(
                       children: [
-                        Row(
-                          children: [
-                            Column(
-                              children: [
-                                IconButton(
-                                    icon: Icon(Icons.remove,
-                                      color: color,
-                                    ),
-                                    onPressed: () {}
-                                ),
-                              ],
-                            ),
-                            Column(
-                              children: [
-                                Padding(
-                                  padding: EdgeInsets.only(
-                                    left: 10,
-                                    right: 10,
-                                  ),
-                                  child: Text(
-                                    '6',
-                                    style: TextStyle(
-                                      fontSize: 32,
-                                      color: color,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Column(
-                              children: [
-                                IconButton(
-                                    icon: Icon(Icons.add,
-                                      color: color,
-                                    ),
-                                    onPressed: () {}
-                                ),
-                              ],
-                            ),
-                          ]
-                        ),
+                        productionRow(color: color, resource: RESOURCE_TERRAFORMING_RATING),
                       ],
                     ),
                     Column(
@@ -369,11 +444,16 @@ class _MyHomePageState extends State<MyHomePage> {
                     Column(
                       children: [
                         FlatButton(
-                          onPressed: () => _showDialog('', color),
+                          onPressed: _incrementGeneration,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.all(
+                                Radius.circular(20.0)
+                            ),
+                          ),
                           child: Text(
-                            '12',
+                            '${_generation}',
                             style: TextStyle(
-                              fontSize: 48,
+                              fontSize: RESOURCE_FONT_SIZE,
                               color: color,
                               fontWeight: FontWeight.w600,
                             ),
