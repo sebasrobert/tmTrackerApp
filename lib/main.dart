@@ -1,31 +1,40 @@
+import 'package:flushbar/flushbar.dart';
 import 'package:flutter/material.dart';
 import 'package:numberpicker/numberpicker.dart';
 
 void main() => runApp(MyApp());
 
-const double BORDER_CIRCULAR_RADIUS = 0;
 const int MAIN_COLOR_TEINT = 800;
 const int SUB_COLOR_TEINT = 50;
 const double SUB_COLOR_OPACITY = 0.3;
-const double BORDER_WITH = 2;
+const double BORDER_WITH = 0;
 const double RESOURCE_FONT_SIZE= 42;
 
-const RESOURCE_TERRAFORMING_RATING = 'Terraforming Rating';
-const RESOURCE_MEGACREDITS = 'Megacredits';
-const RESOURCE_STEEL = 'Steel';
-const RESOURCE_TITANIUM = 'Titanium';
-const RESOURCE_PLANTS = 'Plants';
-const RESOURCE_ENERGY = 'Energy';
-const RESOURCE_HEAT = 'Heat';
+const String RESOURCE_TERRAFORMING_RATING = 'Terraforming Rating';
+const String RESOURCE_MEGACREDITS = 'Megacredits';
+const String RESOURCE_STEEL = 'Steel';
+const String RESOURCE_TITANIUM = 'Titanium';
+const String RESOURCE_PLANTS = 'Plants';
+const String RESOURCE_ENERGY = 'Energy';
+const String RESOURCE_HEAT = 'Heat';
+
+const int NEW_GAME_STANDARD = 1;
+const int NEW_GAME_CORPORATE_ERA = 2;
+const int NEW_GAME_SOLO = 3;
+
+const int GREENERY_PLANTS_ACTION = 1;
+const int RAISE_HEAT_ACTION = 2;
+
+const RESOURCES = [RESOURCE_TERRAFORMING_RATING, RESOURCE_MEGACREDITS, RESOURCE_STEEL, RESOURCE_TITANIUM, RESOURCE_PLANTS, RESOURCE_ENERGY, RESOURCE_HEAT];
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Terraforming Mars player mat',
+      title: 'TM player companion',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.grey,
       ),
       home: MyHomePage(title: 'Terraforming Mars player mat'),
     );
@@ -41,23 +50,96 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  Map<String, int> _productions = new Map();
-  Map<String, int> _amounts = new Map();
+class UndoState {
+  Map<String, int> _resourceProductions = new Map();
+  Map<String, int> _resourceAmounts = new Map();
   int _generation = 1;
+  String _actionName;
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  Map<String, int> _resourceProductions = new Map();
+  Map<String, int> _resourceAmounts = new Map();
+  int _generation = 1;
+  List<UndoState> _previousStates = new List();
+  Map<String, int> _minResourceProductions = new Map();
 
   @override
   void initState() {
     super.initState();
+    _minResourceProductions[RESOURCE_TERRAFORMING_RATING] = 0;
+    _minResourceProductions[RESOURCE_MEGACREDITS] = -5;
+    _minResourceProductions[RESOURCE_STEEL] = 0;
+    _minResourceProductions[RESOURCE_TITANIUM] = 0;
+    _minResourceProductions[RESOURCE_PLANTS] = 0;
+    _minResourceProductions[RESOURCE_ENERGY] = 0;
+    _minResourceProductions[RESOURCE_HEAT] = 0;
+
+
     _reset();
+  }
+
+  void _persistCurrentState(String actionName) {
+    setState(() {
+      UndoState state = new UndoState();
+      state._resourceAmounts.addAll(_resourceAmounts);
+      state._resourceProductions.addAll(_resourceProductions);
+      state._generation = _generation;
+      state._actionName = actionName;
+      _previousStates.add(state);
+    });
+  }
+
+  void _restorePreviousState() {
+    UndoState previousState;
+    setState(() {
+      previousState = _previousStates.removeLast();
+
+      _resourceProductions.clear();
+      _resourceProductions.addAll(previousState._resourceProductions);
+
+      _resourceAmounts.clear();
+      _resourceAmounts.addAll(previousState._resourceAmounts);
+
+      _generation = previousState._generation;
+    });
+
+    Flushbar(
+      title:  "Undone",
+      message:  previousState._actionName,
+      icon: Icon(
+        Icons.info_outline,
+        size: 28.0,
+        color: Colors.blue[300],
+      ),
+      duration:  Duration(seconds: 3),
+      margin: EdgeInsets.all(8),
+      borderRadius: 8,
+    )..show(context);
+
   }
 
   void _incrementGeneration() {
     setState(() {
-      _productions.keys.forEach((String key) => {
-        _amounts[key] = _getAmount(key) + _productions[key]
+      _persistCurrentState('Next generation');
+
+      _resourceAmounts[RESOURCE_HEAT] = _resourceAmounts[RESOURCE_HEAT] + _resourceAmounts[RESOURCE_ENERGY];
+      _resourceAmounts[RESOURCE_ENERGY] = 0;
+
+      _resourceAmounts[RESOURCE_MEGACREDITS] = _resourceAmounts[RESOURCE_MEGACREDITS] + _resourceProductions[RESOURCE_MEGACREDITS] + _resourceProductions[RESOURCE_TERRAFORMING_RATING];
+      _resourceAmounts[RESOURCE_STEEL] = _resourceAmounts[RESOURCE_STEEL] + _resourceProductions[RESOURCE_STEEL];
+      _resourceAmounts[RESOURCE_TITANIUM] = _resourceAmounts[RESOURCE_TITANIUM] + _resourceProductions[RESOURCE_TITANIUM];
+      _resourceAmounts[RESOURCE_PLANTS] = _resourceAmounts[RESOURCE_PLANTS] + _resourceProductions[RESOURCE_PLANTS];
+      _resourceAmounts[RESOURCE_ENERGY] = _resourceAmounts[RESOURCE_ENERGY] + _resourceProductions[RESOURCE_ENERGY];
+      _resourceAmounts[RESOURCE_HEAT] = _resourceAmounts[RESOURCE_HEAT] + _resourceProductions[RESOURCE_HEAT];
+
+
+      RESOURCES.forEach((resource) => {
+        if (_resourceAmounts[resource] < 0) {
+          _resourceAmounts[resource] = 0
+        }
       });
-      _amounts[RESOURCE_MEGACREDITS] = _amounts[RESOURCE_MEGACREDITS] + _getProductions(RESOURCE_TERRAFORMING_RATING);
+
       _generation++;
     });
   }
@@ -65,74 +147,293 @@ class _MyHomePageState extends State<MyHomePage> {
   void _setResourceAmount(String type, int amount) {
     setState(() {
       if (amount != null) {
-        _amounts[type] = amount;
+        _persistCurrentState('${type} amount updated from ${_resourceAmounts[type]} to ${amount}');
+        _resourceAmounts[type] = amount;
       }
     });
   }
 
-  int _getAmount(String type) {
-    return _amounts[type] != null ? _amounts[type] : 0;
+  int _getResourceAmount(String type) {
+    return _resourceAmounts[type];
   }
 
-  void _incrementProductions(String type) {
+  void _incrementResourceProduction(String resource) {
     setState(() {
-      int currentValue = _productions[type];
-      if (currentValue == null) {
-        currentValue = 0;
-      }
-      _productions[type] = currentValue + 1;
+      _persistCurrentState('${resource} production incremented');
+      _resourceProductions[resource] = _resourceProductions[resource] + 1;
     });
   }
 
-  void _decrementProductions(String type) {
+  void _decrementResourceProductions(String resource) {
     setState(() {
-      int currentValue = _productions[type];
-      if (currentValue == null) {
-        currentValue = 0;
-      }
-      _productions[type] = currentValue - 1;
+      _persistCurrentState('${resource} production decremented');
+      _resourceProductions[resource] = _resourceProductions[resource] - 1;
     });
   }
 
-  int _getProductions(String type) {
-    return _productions[type] != null ? _productions[type] : 0;
+  int _getResourceProductions(String type) {
+    return _resourceProductions[type];
+  }
+
+  void _buyCards(int numberOfCards) {
+    setState(() {
+      _persistCurrentState('Buy ${numberOfCards} card(s)');
+      _resourceAmounts[RESOURCE_MEGACREDITS] = _resourceAmounts[RESOURCE_MEGACREDITS] - (numberOfCards * 3);
+    });
+  }
+
+  void _newGame(int gameMode) {
+    setState(() {
+      if (gameMode == NEW_GAME_STANDARD) {
+        _resourceProductions[RESOURCE_TERRAFORMING_RATING] = 20;
+        _resourceProductions[RESOURCE_MEGACREDITS] = 1;
+        _resourceProductions[RESOURCE_STEEL] = 1;
+        _resourceProductions[RESOURCE_TITANIUM] = 1;
+        _resourceProductions[RESOURCE_PLANTS] = 1;
+        _resourceProductions[RESOURCE_ENERGY] = 1;
+        _resourceProductions[RESOURCE_HEAT] = 1;
+
+        _resourceAmounts[RESOURCE_TERRAFORMING_RATING] = 0;
+        _resourceAmounts[RESOURCE_MEGACREDITS] = 0;
+        _resourceAmounts[RESOURCE_STEEL] = 0;
+        _resourceAmounts[RESOURCE_TITANIUM] = 0;
+        _resourceAmounts[RESOURCE_PLANTS] = 0;
+        _resourceAmounts[RESOURCE_ENERGY] = 0;
+        _resourceAmounts[RESOURCE_HEAT] = 0;
+      } else if (gameMode == NEW_GAME_CORPORATE_ERA) {
+        _resourceProductions[RESOURCE_TERRAFORMING_RATING] = 20;
+        _resourceProductions[RESOURCE_MEGACREDITS] = 0;
+        _resourceProductions[RESOURCE_STEEL] = 0;
+        _resourceProductions[RESOURCE_TITANIUM] = 0;
+        _resourceProductions[RESOURCE_PLANTS] = 0;
+        _resourceProductions[RESOURCE_ENERGY] = 0;
+        _resourceProductions[RESOURCE_HEAT] = 0;
+
+        _resourceAmounts[RESOURCE_TERRAFORMING_RATING] = 0;
+        _resourceAmounts[RESOURCE_MEGACREDITS] = 0;
+        _resourceAmounts[RESOURCE_STEEL] = 0;
+        _resourceAmounts[RESOURCE_TITANIUM] = 0;
+        _resourceAmounts[RESOURCE_PLANTS] = 0;
+        _resourceAmounts[RESOURCE_ENERGY] = 0;
+        _resourceAmounts[RESOURCE_HEAT] = 0;
+      } else if (gameMode == NEW_GAME_SOLO) {
+        _resourceProductions[RESOURCE_TERRAFORMING_RATING] = 14;
+        _resourceProductions[RESOURCE_MEGACREDITS] = 0;
+        _resourceProductions[RESOURCE_STEEL] = 0;
+        _resourceProductions[RESOURCE_TITANIUM] = 0;
+        _resourceProductions[RESOURCE_PLANTS] = 0;
+        _resourceProductions[RESOURCE_ENERGY] = 0;
+        _resourceProductions[RESOURCE_HEAT] = 0;
+
+        _resourceAmounts[RESOURCE_TERRAFORMING_RATING] = 0;
+        _resourceAmounts[RESOURCE_MEGACREDITS] = 0;
+        _resourceAmounts[RESOURCE_STEEL] = 0;
+        _resourceAmounts[RESOURCE_TITANIUM] = 0;
+        _resourceAmounts[RESOURCE_PLANTS] = 0;
+        _resourceAmounts[RESOURCE_ENERGY] = 0;
+        _resourceAmounts[RESOURCE_HEAT] = 0;
+      }
+
+      _generation = 1;
+      _previousStates.clear();
+    });
+  }
+
+  String _getProjectName(int value) {
+    if (value == 11) {
+      return 'Power plant';
+    }
+
+    if (value == 14) {
+      return 'Asteroid';
+    }
+
+    if (value == 18) {
+      return 'Aquifier';
+    }
+
+    if (value == 23) {
+      return 'Greenery';
+    }
+
+    if (value == 25) {
+      return 'City';
+    }
+
+    if (value == 1) {
+      return 'Greenery (8 plants)';
+    }
+
+    if (value == 2) {
+      return 'Raise heat';
+    }
+    return '';
+  }
+
+  void _executeProject(int value) {
+    setState(() {
+      _persistCurrentState('Execute project ${_getProjectName(value)}');
+
+      if (value == GREENERY_PLANTS_ACTION) {
+        _resourceAmounts[RESOURCE_PLANTS] = _resourceAmounts[RESOURCE_PLANTS] - 8;
+
+      } else if (value == RAISE_HEAT_ACTION) {
+        _resourceAmounts[RESOURCE_HEAT] = _resourceAmounts[RESOURCE_HEAT] - 8;
+      } else {
+        _resourceAmounts[RESOURCE_MEGACREDITS] = _resourceAmounts[RESOURCE_MEGACREDITS] - (value);
+      }
+    });
   }
 
   void _reset() {
     setState(() {
-      _productions[RESOURCE_TERRAFORMING_RATING] = 14;
-      _productions[RESOURCE_MEGACREDITS] = 0;
-      _productions[RESOURCE_STEEL] = 0;
-      _productions[RESOURCE_TITANIUM] = 0;
-      _productions[RESOURCE_PLANTS] = 0;
-      _productions[RESOURCE_ENERGY] = 0;
-      _productions[RESOURCE_HEAT] = 0;
+      _resourceProductions[RESOURCE_TERRAFORMING_RATING] = 0;
+      _resourceProductions[RESOURCE_MEGACREDITS] = 0;
+      _resourceProductions[RESOURCE_STEEL] = 0;
+      _resourceProductions[RESOURCE_TITANIUM] = 0;
+      _resourceProductions[RESOURCE_PLANTS] = 0;
+      _resourceProductions[RESOURCE_ENERGY] = 0;
+      _resourceProductions[RESOURCE_HEAT] = 0;
 
-      _amounts[RESOURCE_TERRAFORMING_RATING] = 14;
-      _amounts[RESOURCE_MEGACREDITS] = 0;
-      _amounts[RESOURCE_STEEL] = 0;
-      _amounts[RESOURCE_TITANIUM] = 0;
-      _amounts[RESOURCE_PLANTS] = 0;
-      _amounts[RESOURCE_ENERGY] = 0;
-      _amounts[RESOURCE_HEAT] = 0;
-      
+      _resourceAmounts[RESOURCE_TERRAFORMING_RATING] = 0;
+      _resourceAmounts[RESOURCE_MEGACREDITS] = 0;
+      _resourceAmounts[RESOURCE_STEEL] = 0;
+      _resourceAmounts[RESOURCE_TITANIUM] = 0;
+      _resourceAmounts[RESOURCE_PLANTS] = 0;
+      _resourceAmounts[RESOURCE_ENERGY] = 0;
+      _resourceAmounts[RESOURCE_HEAT] = 0;
+
       _generation = 1;
+
+      _previousStates.clear();
     });
   }
 
-  void _showDialog(String name, Color color) {
+  Widget _projectsPopupButton() => PopupMenuButton<int>(
+    child: Padding(
+      padding: EdgeInsets.all(8.0),
+      child: Text(
+          'Execute project',
+        ),
+    ),
+    onSelected: (value) => _executeProject(value),
+    itemBuilder: (context) => [
+      PopupMenuItem(
+        value: 11,
+        enabled: _resourceAmounts[RESOURCE_MEGACREDITS] >= 11,
+        child: Text("Power plant (11)"),
+      ),
+      PopupMenuItem(
+        value: 14,
+        enabled: _resourceAmounts[RESOURCE_MEGACREDITS] >= 14,
+        child: Text("Asteroid (14)"),
+      ),
+      PopupMenuItem(
+        value: 18,
+        enabled: _resourceAmounts[RESOURCE_MEGACREDITS] >= 18,
+        child: Text("Aquifier (18)"),
+      ),
+      PopupMenuItem(
+        value: 23,
+        enabled: _resourceAmounts[RESOURCE_MEGACREDITS] >= 23,
+        child: Text("Greenery (23)"),
+      ),
+      PopupMenuItem(
+        value: 25,
+        enabled: _resourceAmounts[RESOURCE_MEGACREDITS] >= 25,
+        child: Text("City (25)"),
+      ),
+      PopupMenuDivider(),
+      PopupMenuItem(
+        value: 1,
+        enabled: _resourceAmounts[RESOURCE_PLANTS] >= 8,
+        child: Text("Greenery (8 plants)"),
+      ),
+      PopupMenuItem(
+        value: 2,
+        enabled: _resourceAmounts[RESOURCE_HEAT] >= 8,
+        child: Text("Raise heat (8 heat)"),
+      ),
+    ],
+  );
+
+  Widget _buyCardsPopupButton() => PopupMenuButton<int>(
+    child: Padding(
+      padding: EdgeInsets.all(8.0),
+      child: Text(
+        'Buy cards',
+      ),
+    ),
+    onSelected: (value) => _buyCards(value),
+    itemBuilder: (context) => [
+      PopupMenuItem(
+        value: 1,
+        enabled: _resourceAmounts[RESOURCE_MEGACREDITS] >= 3,
+        child: Text("Buy 1 card (3)"),
+      ),
+      PopupMenuItem(
+        value: 2,
+        enabled: _resourceAmounts[RESOURCE_MEGACREDITS] >= 6,
+        child: Text("Buy 2 cards (6)"),
+      ),
+      PopupMenuItem(
+        value: 3,
+        enabled: _resourceAmounts[RESOURCE_MEGACREDITS] >= 9,
+        child: Text("Buy 3 cards (9)"),
+      ),
+      PopupMenuItem(
+        value: 4,
+        enabled: _resourceAmounts[RESOURCE_MEGACREDITS] >= 12,
+        child: Text("Buy 4 cards (12)"),
+      ),
+    ],
+  );
+
+  Widget _newGamePopupButton() => PopupMenuButton<int>(
+    child: Padding(
+      padding: EdgeInsets.all(8.0),
+      child: Text(
+        'New game',
+      ),
+    ),
+    onSelected: (value) => _newGame(value),
+    itemBuilder: (context) => [
+      PopupMenuItem(
+        value: NEW_GAME_STANDARD,
+        child: Text("Standard"),
+      ),
+      PopupMenuItem(
+        value: NEW_GAME_CORPORATE_ERA,
+        child: Text("Corporate Era"),
+      ),
+      PopupMenuItem(
+        value: NEW_GAME_SOLO,
+        child: Text("Solo"),
+      ),
+    ],
+  );
+
+  void _showDialog(String resource, Color color) {
     showDialog<int>(
         context: context,
         builder: (BuildContext context) {
           return new NumberPickerDialog.integer(
             minValue: 0,
             maxValue: 1000,
-            initialIntegerValue: _amounts[name] != null ? _amounts[name] : 0,
+            initialIntegerValue: _getResourceAmount(resource),
             title: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                Image.asset(
+                  getImageForResource(resource),
+                  height: 24,
+                  width: 24,
+                ),
+                Padding(
+                  padding: EdgeInsets.all(4.0),
+                ),
                 Text(
-                  name,
+                  resource,
                   style: TextStyle(
                     fontSize: 32,
                     color: color,
@@ -144,40 +445,26 @@ class _MyHomePageState extends State<MyHomePage> {
           );
         }
     ).then((int value) => {
-      _setResourceAmount(name, value)
+      _setResourceAmount(resource, value)
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-//      appBar: AppBar(
-//        title: Text(widget.title),
-//      ),
-
       body: Center(
         child: Container(
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: new BorderRadius.only(
-                topLeft:  const  Radius.circular(0.0),
-                topRight: const  Radius.circular(0.0)
-            ),
-          ),
           child: Column(
             children: [
               Padding(
                 padding: EdgeInsets.all(12.0),
               ),
-              Padding(
-                padding: EdgeInsets.all(0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: <Widget>[
-                    actionButton(text: 'Undo'),
-                    actionButton(text: 'New game'),
-                  ],
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: <Widget>[
+                  actionButton(text: 'Undo', onPressed: (_previousStates.length > 0 ? _restorePreviousState : null)),
+                  _newGamePopupButton(),
+                ],
               ),
               Expanded(
                   child: mainPanel(color: Colors.blueGrey[MAIN_COLOR_TEINT], subcolor: Colors.blueGrey[SUB_COLOR_TEINT]),
@@ -198,17 +485,20 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: trackerPanel(color: Colors.deepPurple[MAIN_COLOR_TEINT], subColor: Colors.deepPurple[SUB_COLOR_TEINT], resource: RESOURCE_ENERGY)
               ),
               Expanded(
-                  child: trackerPanel(color: Colors.red[MAIN_COLOR_TEINT], subColor: Colors.red[SUB_COLOR_TEINT], resource: RESOURCE_HEAT)
+                  child: trackerPanel(color: Colors.orange[MAIN_COLOR_TEINT], subColor: Colors.red[SUB_COLOR_TEINT], resource: RESOURCE_HEAT)
               ),
-              Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: <Widget>[
-                    actionButton(text: 'Projects'),
-                    actionButton(text: 'Buy card'),
-                  ],
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: <Widget>[
+                  Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: _projectsPopupButton(),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.all(.0),
+                    child:  _buyCardsPopupButton(),
+                  ),
+                ],
               ),
             ],
           ),
@@ -217,39 +507,67 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Widget actionButton({String text}) => FlatButton(
-    onPressed: _reset,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(
-          Radius.circular(20.0)
-      ),
-    ),
+  Widget actionButton({@required String text, @required VoidCallback onPressed}) => FlatButton(
+    onPressed: onPressed,
     child: Text(
       text,
+      style: TextStyle(
+        fontWeight: FontWeight.w400,
+      ),
     ),
   );
 
-  Widget rowHeader({String title, Color color}) => Container(
+  String getImageForResource(String title) {
+    if (title == RESOURCE_MEGACREDITS) {
+      return 'assets/megacredits.png';
+    } else if (title == RESOURCE_STEEL) {
+      return 'assets/steel.png';
+    } else if (title == RESOURCE_PLANTS) {
+      return 'assets/plant.png';
+    } else if (title == RESOURCE_ENERGY) {
+      return 'assets/energy.png';
+    } else if (title == RESOURCE_HEAT) {
+      return 'assets/heat.png';
+    } else {
+      return 'assets/titanium.png';
+    }
+  }
+
+  Widget trackerHeader({String title, Color color}) => Container(
     constraints: BoxConstraints(
-      minHeight: 24,
+      minHeight: 22,
     ),
     decoration: BoxDecoration(
       color: color,
-      borderRadius: new BorderRadius.only(
-          topLeft:  const  Radius.circular(BORDER_CIRCULAR_RADIUS),
-          topRight: const  Radius.circular(BORDER_CIRCULAR_RADIUS)
-      ),
     ),
     child: Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.white,
-            fontWeight: FontWeight.w400,
+        Padding(
+          padding: EdgeInsets.only(
+            right: 8,
           ),
+          child: Opacity(
+            opacity: 1,
+            child: Image.asset(
+              getImageForResource(title),
+              height: 16,
+              width: 16,
+            ),
+          ),
+        ),
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.white,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
         ),
       ],
     ),
@@ -258,119 +576,92 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget productionRow({Color color, String resource}) {
     return Row(
       children: [
-        Column(
-          children: [
-            IconButton(
-                icon: Icon(Icons.remove,
-                  color: color,
-                ),
-                onPressed:  () => {_decrementProductions(resource)}
+        IconButton(
+            icon: Icon(Icons.remove,
+              color: color,
             ),
-          ],
+            onPressed: _getResourceProductions(resource) > _minResourceProductions[resource] ? () => {_decrementResourceProductions(resource)} : null,
         ),
-        Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.only(
-                left: 10,
-                right: 10,
-              ),
-              child: Container(
-
-                constraints: BoxConstraints(
-                  minWidth: 44,
-                ),
-                child: Text(
-                  '${_productions[resource] != null ? _productions[resource] : 0}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 32,
-                    color: color, //Colors.black,
-                  ),
-                ),
-              ),
+        Container(
+          constraints: BoxConstraints(
+            minWidth: 60,
+          ),
+          child: Text(
+            '${_getResourceProductions(resource)}',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 32,
+              color: color, //Colors.black,
             ),
-          ],
+          ),
         ),
-        Column(
-          children: [
-            IconButton(
-                icon: Icon(Icons.add,
-                  color: color,
-                ),
-                onPressed: () => {_incrementProductions(resource)}
+        IconButton(
+            icon: Icon(Icons.add,
+              color: color,
             ),
-          ],
+            onPressed: () => {_incrementResourceProduction(resource)}
         ),
       ]
   );
   }
 
-  Widget trackerPanel({Color color, Color subColor, String resource}) => Container(
-      child: Column(
-        children: [
-          rowHeader(
-            color: color,
-            title: resource,
-          ),
-          Expanded(child:Container(
-            decoration: BoxDecoration(
-              color: subColor.withOpacity(SUB_COLOR_OPACITY),
-              borderRadius: new BorderRadius.only(
-                  bottomLeft:  const  Radius.circular(BORDER_CIRCULAR_RADIUS),
-                  bottomRight: const  Radius.circular(BORDER_CIRCULAR_RADIUS)
-              ),
-              border: Border.all(
-                color: color,
-                width: BORDER_WITH,
-              ),
+  Widget trackerPanel({Color color, Color subColor, String resource}) => Column(
+    children: [
+      trackerHeader(
+        color: color,
+        title: resource,
+      ),
+      Expanded(child:Container(
+        decoration: BoxDecoration(
+          color: subColor.withOpacity(SUB_COLOR_OPACITY),
+          border: Border(
+            left: BorderSide(
+              color: color,
+              width: BORDER_WITH,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            right: BorderSide(
+              color: color,
+              width: BORDER_WITH,
+            ),
+            bottom: BorderSide(
+              color: color,
+              width: BORDER_WITH,
+            ),
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Column(
-                      children: [
-                        productionRow(color: color, resource: resource),
-                      ],
-                    ),
-                    Column(
-                      children: [
-                        Icon(Icons.play_arrow,
-                          color: color.withOpacity(0.2),
-                          size: 32,
-                        ),
-                      ],
-                    ),
-                    Column(
-                      children: [
-                        FlatButton(
-                          onPressed: () => _showDialog(resource, color),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.all(
-                                  Radius.circular(20.0)
-                              ),
-                          ),
-                          child: Text(
-                            '${_amounts[resource] != null ? _amounts[resource] : 0}',
-                            style: TextStyle(
-                              fontSize: RESOURCE_FONT_SIZE,
-                              color: color,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        )
-                      ],
-                    ),
-                  ],
+                productionRow(color: color, resource: resource),
+                Icon(Icons.play_arrow,
+                  color: color.withOpacity(0.2),
+                  size: 32,
                 ),
+                FlatButton(
+                  onPressed: () => _showDialog(resource, color),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.all(
+                          Radius.circular(20.0)
+                      ),
+                  ),
+                  child: Text(
+                    '${_getResourceAmount(resource)}',
+                    style: TextStyle(
+                      fontSize: RESOURCE_FONT_SIZE,
+                      color: color,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )
               ],
             ),
-          )),
-        ],
-      )
+          ],
+        ),
+      )),
+    ],
   );
 
   Widget mainPanel({Color color, Color subcolor}) => Container(
@@ -382,10 +673,6 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             decoration: BoxDecoration(
               color: color,
-              borderRadius: new BorderRadius.only(
-                  topLeft:  const  Radius.circular(BORDER_CIRCULAR_RADIUS),
-                  topRight: const  Radius.circular(BORDER_CIRCULAR_RADIUS)
-              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -413,10 +700,6 @@ class _MyHomePageState extends State<MyHomePage> {
           Expanded(child:Container(
             decoration: BoxDecoration(
               color: subcolor.withOpacity(SUB_COLOR_OPACITY),
-              borderRadius: new BorderRadius.only(
-                  bottomLeft:  const  Radius.circular(BORDER_CIRCULAR_RADIUS),
-                  bottomRight: const  Radius.circular(BORDER_CIRCULAR_RADIUS)
-              ),
               border: Border.all(
                 color: color,
                 width: BORDER_WITH,
